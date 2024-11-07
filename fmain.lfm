@@ -1,0 +1,477 @@
+object frmMain: TfrmMain
+  Left = 374
+  Height = 376
+  Top = 117
+  Width = 616
+  Caption = 'MQTT Client'
+  ClientHeight = 376
+  ClientWidth = 616
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnShow = FormShow
+  ShowHint = True
+  LCLVersion = '3.6.0.0'
+  object panConnect: TPanel
+    Left = 0
+    Height = 99
+    Top = 0
+    Width = 616
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 99
+    ClientWidth = 616
+    TabOrder = 0
+    object Label1: TLabel
+      AnchorSideTop.Control = edAddr
+      AnchorSideTop.Side = asrCenter
+      Left = 15
+      Height = 15
+      Top = 38
+      Width = 44
+      Caption = 'Adresse:'
+    end
+    object edAddr: TEdit
+      AnchorSideLeft.Control = edClientID
+      AnchorSideTop.Control = edClientID
+      AnchorSideTop.Side = asrBottom
+      Left = 68
+      Height = 23
+      Top = 34
+      Width = 170
+      BorderSpacing.Top = 8
+      TabOrder = 1
+      Text = '127.0.0.1'
+      TextHint = 'Adresse vom Broker'
+    end
+    object edPort: TEdit
+      AnchorSideLeft.Control = lbPort
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = edAddr
+      AnchorSideTop.Side = asrCenter
+      Left = 276
+      Height = 23
+      Top = 34
+      Width = 53
+      BorderSpacing.Left = 8
+      MaxLength = 5
+      NumbersOnly = True
+      TabOrder = 2
+      Text = '1883'
+      TextHint = 'Port'
+    end
+    object spConnect: TSpeedButton
+      AnchorSideLeft.Control = edClientID
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = edClientID
+      AnchorSideTop.Side = asrCenter
+      Left = 246
+      Height = 22
+      Top = 3
+      Width = 68
+      BorderSpacing.Left = 8
+      Caption = 'Verbinde'
+      OnClick = spConnectClick
+    end
+    object spDisconnect: TSpeedButton
+      AnchorSideLeft.Control = spConnect
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = spConnect
+      AnchorSideTop.Side = asrCenter
+      Left = 322
+      Height = 22
+      Top = 3
+      Width = 68
+      BorderSpacing.Left = 8
+      Caption = 'Trenne'
+      Enabled = False
+      OnClick = spDisconnectClick
+    end
+    object chkLogPing: TCheckBox
+      AnchorSideLeft.Control = spDisconnect
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = edClientID
+      AnchorSideTop.Side = asrCenter
+      Left = 406
+      Height = 19
+      Top = 5
+      Width = 65
+      BorderSpacing.Left = 16
+      Caption = 'Log Ping'
+      TabOrder = 5
+    end
+    object lbName: TLabel
+      AnchorSideTop.Control = edClientID
+      AnchorSideTop.Side = asrCenter
+      Left = 15
+      Height = 15
+      Top = 7
+      Width = 45
+      Caption = 'ClientID:'
+    end
+    object edClientID: TEdit
+      AnchorSideLeft.Control = lbName
+      AnchorSideLeft.Side = asrBottom
+      Left = 68
+      Height = 23
+      Top = 3
+      Width = 170
+      BorderSpacing.Left = 8
+      TabOrder = 0
+      Text = 'TestClient1'
+      TextHint = 'Client ID'
+    end
+    object Label4: TLabel
+      AnchorSideTop.Control = edUser
+      AnchorSideTop.Side = asrCenter
+      Left = 15
+      Height = 15
+      Top = 69
+      Width = 26
+      Caption = 'User:'
+    end
+    object edUser: TEdit
+      AnchorSideLeft.Control = edClientID
+      AnchorSideTop.Control = edAddr
+      AnchorSideTop.Side = asrBottom
+      Left = 68
+      Height = 23
+      Top = 65
+      Width = 170
+      BorderSpacing.Top = 8
+      TabOrder = 3
+      TextHint = 'Benutzer Name'
+    end
+    object Label5: TLabel
+      AnchorSideLeft.Control = edUser
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = edPwd
+      AnchorSideTop.Side = asrCenter
+      Left = 246
+      Height = 15
+      Top = 69
+      Width = 50
+      BorderSpacing.Left = 8
+      Caption = 'Passwort:'
+    end
+    object edPwd: TEdit
+      AnchorSideLeft.Control = Label5
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = edUser
+      AnchorSideTop.Side = asrCenter
+      Left = 304
+      Height = 23
+      Top = 65
+      Width = 170
+      BorderSpacing.Left = 8
+      TabOrder = 4
+      TextHint = 'Passwort'
+    end
+    object lbPort: TLabel
+      AnchorSideLeft.Control = edAddr
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = edPort
+      AnchorSideTop.Side = asrCenter
+      Left = 246
+      Height = 15
+      Top = 38
+      Width = 22
+      BorderSpacing.Left = 8
+      Caption = 'Port'
+    end
+  end
+  object Panel1: TPanel
+    Left = 0
+    Height = 277
+    Top = 99
+    Width = 616
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 277
+    ClientWidth = 616
+    TabOrder = 1
+    object panPublish: TPanel
+      Left = 0
+      Height = 277
+      Top = 0
+      Width = 315
+      Align = alLeft
+      BevelOuter = bvNone
+      ClientHeight = 277
+      ClientWidth = 315
+      Enabled = False
+      TabOrder = 0
+      object Label2: TLabel
+        Left = 0
+        Height = 15
+        Top = 0
+        Width = 315
+        Align = alTop
+        Alignment = taCenter
+        Caption = 'Publish - Schreibe einen Wert'
+      end
+      object edPublish: TEdit
+        AnchorSideLeft.Control = panSubscribe
+        AnchorSideTop.Control = Label3
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = spPublish
+        Left = 8
+        Height = 23
+        Top = 23
+        Width = 268
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 8
+        BorderSpacing.Top = 8
+        BorderSpacing.Right = 8
+        TabOrder = 0
+        Text = 'Test 1'
+        TextHint = 'Publish Variable'
+      end
+      object rbPQoS0: TRadioButton
+        AnchorSideLeft.Control = panPublish
+        AnchorSideTop.Control = edPublish
+        AnchorSideTop.Side = asrBottom
+        Left = 8
+        Height = 19
+        Hint = 'QoS 0'
+        Top = 54
+        Width = 49
+        BorderSpacing.Left = 8
+        BorderSpacing.Top = 8
+        BorderSpacing.Right = 8
+        Caption = 'QoS 0'
+        Checked = True
+        TabOrder = 1
+        TabStop = True
+      end
+      object rbPQoS1: TRadioButton
+        AnchorSideLeft.Control = rbPQoS0
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = rbPQoS0
+        AnchorSideTop.Side = asrCenter
+        Left = 65
+        Height = 19
+        Hint = 'QoS 1'
+        Top = 54
+        Width = 49
+        BorderSpacing.Left = 8
+        Caption = 'QoS 1'
+        TabOrder = 2
+      end
+      object rbPQoS2: TRadioButton
+        AnchorSideLeft.Control = rbPQoS1
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = rbPQoS0
+        AnchorSideTop.Side = asrCenter
+        Left = 122
+        Height = 19
+        Hint = 'QoS 2'
+        Top = 54
+        Width = 49
+        BorderSpacing.Left = 8
+        Caption = 'QoS 2'
+        TabOrder = 3
+      end
+      object spPublish: TSpeedButton
+        AnchorSideTop.Control = edPublish
+        AnchorSideTop.Side = asrCenter
+        AnchorSideRight.Control = panPublish
+        AnchorSideRight.Side = asrBottom
+        Left = 284
+        Height = 22
+        Top = 23
+        Width = 23
+        Anchors = [akTop, akRight]
+        BorderSpacing.Right = 8
+        Caption = '+'
+        OnClick = spPublishClick
+      end
+      object memPub: TMemo
+        AnchorSideLeft.Control = panSubscribe
+        AnchorSideTop.Control = rbPQoS0
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = panSubscribe
+        AnchorSideRight.Side = asrBottom
+        AnchorSideBottom.Control = panSubscribe
+        AnchorSideBottom.Side = asrBottom
+        Left = 0
+        Height = 191
+        Top = 78
+        Width = 326
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        BorderSpacing.Left = 8
+        BorderSpacing.Top = 8
+        BorderSpacing.Right = 8
+        BorderSpacing.Bottom = 8
+        Lines.Strings = (
+          'Daten...'
+        )
+        ScrollBars = ssBoth
+        TabOrder = 6
+      end
+      object chkRetain: TCheckBox
+        AnchorSideLeft.Control = rbPQoS2
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = rbPQoS0
+        AnchorSideTop.Side = asrCenter
+        Left = 179
+        Height = 19
+        Top = 54
+        Width = 51
+        BorderSpacing.Left = 8
+        Caption = 'Retain'
+        TabOrder = 4
+      end
+      object chkDup: TCheckBox
+        AnchorSideLeft.Control = chkRetain
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = rbPQoS0
+        AnchorSideTop.Side = asrCenter
+        Left = 238
+        Height = 19
+        Top = 54
+        Width = 40
+        BorderSpacing.Left = 8
+        Caption = 'Dup'
+        TabOrder = 5
+      end
+    end
+    object Splitter1: TSplitter
+      Left = 315
+      Height = 277
+      Top = 0
+      Width = 5
+    end
+    object panSubscribe: TPanel
+      Left = 320
+      Height = 277
+      Top = 0
+      Width = 296
+      Align = alClient
+      BevelOuter = bvNone
+      ClientHeight = 277
+      ClientWidth = 296
+      Enabled = False
+      TabOrder = 2
+      object Label3: TLabel
+        Left = 0
+        Height = 15
+        Top = 0
+        Width = 296
+        Align = alTop
+        Alignment = taCenter
+        Caption = 'Subscribe - Registrierung für Empfang'
+      end
+      object edSubscribe: TEdit
+        AnchorSideLeft.Control = panSubscribe
+        AnchorSideTop.Control = Label3
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = spSubscribe
+        Left = 8
+        Height = 23
+        Top = 23
+        Width = 218
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 8
+        BorderSpacing.Top = 8
+        BorderSpacing.Right = 8
+        TabOrder = 0
+        Text = '#'
+        TextHint = 'Subscribe (# = alle)'
+      end
+      object spSubscribe: TSpeedButton
+        AnchorSideTop.Control = edSubscribe
+        AnchorSideTop.Side = asrCenter
+        AnchorSideRight.Control = spUnsubscribe
+        Left = 234
+        Height = 22
+        Top = 23
+        Width = 23
+        Anchors = [akTop, akRight]
+        BorderSpacing.Right = 8
+        Caption = '+'
+        OnClick = spSubscribeClick
+      end
+      object spUnsubscribe: TSpeedButton
+        AnchorSideTop.Control = edSubscribe
+        AnchorSideTop.Side = asrCenter
+        AnchorSideRight.Control = panSubscribe
+        AnchorSideRight.Side = asrBottom
+        Left = 265
+        Height = 22
+        Top = 23
+        Width = 23
+        Anchors = [akTop, akRight]
+        BorderSpacing.Right = 8
+        Caption = '-'
+        OnClick = spUnsubscribeClick
+      end
+      object rbSQoS0: TRadioButton
+        AnchorSideLeft.Control = panSubscribe
+        AnchorSideTop.Control = edSubscribe
+        AnchorSideTop.Side = asrBottom
+        Left = 8
+        Height = 19
+        Hint = 'QoS 0'
+        Top = 54
+        Width = 49
+        BorderSpacing.Left = 8
+        BorderSpacing.Top = 8
+        Caption = 'QoS 0'
+        Checked = True
+        TabOrder = 1
+        TabStop = True
+      end
+      object rbSQoS1: TRadioButton
+        AnchorSideLeft.Control = rbSQoS0
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = rbSQoS0
+        AnchorSideTop.Side = asrCenter
+        Left = 65
+        Height = 19
+        Hint = 'QoS 1'
+        Top = 54
+        Width = 49
+        BorderSpacing.Left = 8
+        Caption = 'QoS 1'
+        TabOrder = 2
+      end
+      object rbSQoS2: TRadioButton
+        AnchorSideLeft.Control = rbSQoS1
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = rbSQoS0
+        AnchorSideTop.Side = asrCenter
+        Left = 122
+        Height = 19
+        Hint = 'QoS 2'
+        Top = 54
+        Width = 49
+        BorderSpacing.Left = 8
+        Caption = 'QoS 2'
+        TabOrder = 3
+      end
+      object memSub: TMemo
+        AnchorSideLeft.Control = panSubscribe
+        AnchorSideTop.Control = rbSQoS0
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = panSubscribe
+        AnchorSideRight.Side = asrBottom
+        AnchorSideBottom.Control = panSubscribe
+        AnchorSideBottom.Side = asrBottom
+        Left = 8
+        Height = 188
+        Top = 81
+        Width = 280
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        BorderSpacing.Left = 8
+        BorderSpacing.Top = 8
+        BorderSpacing.Right = 8
+        BorderSpacing.Bottom = 8
+        Lines.Strings = (
+          'memSub'
+        )
+        ScrollBars = ssBoth
+        TabOrder = 4
+      end
+    end
+  end
+end
