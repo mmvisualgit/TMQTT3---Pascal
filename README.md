@@ -11,6 +11,10 @@ The Protocoll specification is in this document: http://docs.oasis-open.org/mqtt
 This component need's a Broker as server. You can find a lot of YouToube Videos how to install a MQTT Broker like this: https://www.youtube.com/watch?v=kQ159NLCJts
 
 
+## The GUI
+
+![The GUI](https://github.com/mmvisualgit/TMQTT3---Pascal/MQTT_Demo.png?raw=true)
+
 ## Points of Note
 
 * All features from the protocol MQTT V3.1.1 are implemented
