@@ -13,7 +13,7 @@ This component need's a Broker as server. You can find a lot of YouToube Videos 
 
 ## The GUI
 
-![The GUI](https://github.com/mmvisualgit/TMQTT3---Pascal/MQTT_Demo.png?raw=true)
+![The GUI](https://github.com/mmvisualgit/TMQTT3---Pascal/blob/main/MQTT_Demo.png?raw=true)
 
 ## Points of Note
 
