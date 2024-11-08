@@ -28,6 +28,10 @@ Type
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
+    lbSendCnt: TLabel;
+    lbRecCnt: TLabel;
     lbPort: TLabel;
     lbName: TLabel;
     memSub: TMemo;
@@ -189,12 +193,16 @@ Begin
   spDisconnect.Enabled := False;
   panPublish.Enabled := False;
   panSubscribe.Enabled := False;
+  lbRecCnt.Caption := MQTTClient.RecvCounter.ToString;
+  lbSendCnt.Caption := MQTTClient.SendCounter.ToString;
 End;
 
 Procedure TfrmMain.OnPingResp(Sender: TObject);
 Begin
   If chkLogPing.Checked Then
     memSub.Lines.Add('Rx: OnPingResp()');
+  lbRecCnt.Caption := MQTTClient.RecvCounter.ToString;
+  lbSendCnt.Caption := MQTTClient.SendCounter.ToString;
 End;
 
 Procedure TfrmMain.OnPingReq(Sender: TObject);

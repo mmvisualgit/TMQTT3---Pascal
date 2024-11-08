@@ -178,6 +178,54 @@ object frmMain: TfrmMain
       BorderSpacing.Left = 8
       Caption = 'Port'
     end
+    object Label6: TLabel
+      AnchorSideLeft.Control = edPort
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = edPort
+      AnchorSideTop.Side = asrCenter
+      Left = 361
+      Height = 15
+      Top = 38
+      Width = 41
+      BorderSpacing.Left = 32
+      Caption = 'RecCnt:'
+    end
+    object lbRecCnt: TLabel
+      AnchorSideLeft.Control = Label6
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = Label6
+      AnchorSideTop.Side = asrCenter
+      Left = 410
+      Height = 15
+      Top = 38
+      Width = 6
+      BorderSpacing.Left = 8
+      Caption = '0'
+    end
+    object Label7: TLabel
+      AnchorSideLeft.Control = lbRecCnt
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = lbRecCnt
+      AnchorSideTop.Side = asrCenter
+      Left = 432
+      Height = 15
+      Top = 38
+      Width = 48
+      BorderSpacing.Left = 16
+      Caption = 'SendCnt:'
+    end
+    object lbSendCnt: TLabel
+      AnchorSideLeft.Control = Label7
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = Label7
+      AnchorSideTop.Side = asrCenter
+      Left = 488
+      Height = 15
+      Top = 38
+      Width = 6
+      BorderSpacing.Left = 8
+      Caption = '0'
+    end
   end
   object Panel1: TPanel
     Left = 0
@@ -286,17 +334,17 @@ object frmMain: TfrmMain
         OnClick = spPublishClick
       end
       object memPub: TMemo
-        AnchorSideLeft.Control = panSubscribe
+        AnchorSideLeft.Control = panPublish
         AnchorSideTop.Control = rbPQoS0
         AnchorSideTop.Side = asrBottom
-        AnchorSideRight.Control = panSubscribe
+        AnchorSideRight.Control = panPublish
         AnchorSideRight.Side = asrBottom
-        AnchorSideBottom.Control = panSubscribe
+        AnchorSideBottom.Control = panPublish
         AnchorSideBottom.Side = asrBottom
-        Left = 0
+        Left = 8
         Height = 191
         Top = 78
-        Width = 326
+        Width = 299
         Anchors = [akTop, akLeft, akRight, akBottom]
         BorderSpacing.Left = 8
         BorderSpacing.Top = 8

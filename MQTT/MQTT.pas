@@ -28,6 +28,7 @@ Type
     FisConnected: Boolean;
     FAutoResponse: Boolean;
     FTimeout: Integer;
+    FTag: PtrInt;
     FRecvThread: TMQTTReadThread;
 
     FWillMsg: Utf8string;
@@ -37,6 +38,7 @@ Type
 
     FSocket: TTCPBlockSocket;
     FKeepAliveTimer: TTimer;
+    FKeepAlive: TDateTime;
 
     // Event Fields
     FConnAckEvent: TConnAckEvent;
@@ -85,6 +87,8 @@ Type
     Procedure GotPubComp(Sender: TObject; MessageID: Integer);
 
     Procedure SetTimeout(Value: Integer);
+    Function GetRecvCounter(): int64;
+    Function GetSendCounter(): int64;
   public
     { Public Declarations }
     Subscribed: TStringList; // List with all subscribed, as TObject is the MessageID
@@ -116,6 +120,9 @@ Type
     Property isConnected: Boolean read FisConnected;
     Property AutoResponse: Boolean read FAutoResponse write FAutoResponse;
     Property Timeout: Integer read FTimeout write SetTimeout;
+    property RecvCounter: int64 read GetRecvCounter;
+    property SendCounter: int64 read GetSendCounter;
+    property Tag: PtrInt read FTag write FTag;
 
     // Event Handlers
     Property OnConnAck: TConnAckEvent read FConnAckEvent write FConnAckEvent;
@@ -203,6 +210,7 @@ Begin
         // Use the KeepAlive that we just sent to determine our ping timer.
         FKeepAliveTimer.Interval := (Round((Msg.VariableHeader As TMQTTConnectVarHeader).KeepAlive * 0.80)) * 1000;
         FKeepAliveTimer.Enabled := True;
+        FKeepAlive := Now;
       End;
     Finally
       FreeAndNil(Msg);
@@ -350,6 +358,20 @@ Begin
     FSocket.SetTimeout(FTimeout);
 End;
 
+Function TMQTT.GetRecvCounter(): int64;
+Begin
+  If Assigned(FSocket) Then
+    Result := FSocket.RecvCounter
+  Else Result := 0;
+End;
+
+Function TMQTT.GetSendCounter(): int64;
+Begin
+  If Assigned(FSocket) Then
+    Result := FSocket.SendCounter
+  Else Result := 0;
+End;
+
 Function TMQTT.getNextMessageId: Integer;
 Begin
   // Return our current message Id (Range 1...65535)
@@ -370,8 +392,10 @@ End;
 Procedure TMQTT.KeepAliveTimer_Event(Sender: TObject);
 Begin
   If Self.isConnected Then
-  Begin
-    PingReq;
+  Begin                 // 4 times of missing ping request
+    If FKeepAlive < (Now - ((FKeepAliveTimer.Interval * 4) / 86400000)) Then
+      Disconnect // Timeout after 30 seconds, do disconnect
+    Else PingReq;
   End;
 End;
 
@@ -397,6 +421,7 @@ End;
 
 Procedure TMQTT.GotPingResp(Sender: TObject);
 Begin
+  FKeepAlive := Now;
   If Assigned(FPingRespEvent) Then
     OnPingResp(Self);
 End;

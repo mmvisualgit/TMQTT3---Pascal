@@ -221,7 +221,8 @@ Begin
       End;
     End;  // end of Recv state case
     // Send Data after receive
-    While FTxMsgsIn <> FTxMsgsOut Do
+    If FPSocket.CanWrite(1) Then
+    While (FTxMsgsIn <> FTxMsgsOut) And Not Terminated Do
     Begin
       iOut := (FTxMsgsOut + 1) Mod Length(FTxMsgs);
       Data := FTxMsgs[iOut];
@@ -235,7 +236,7 @@ Begin
             sentData := sentData + FPSocket.SendBuffer(Pointer(Copy(Data, sentData - 1, Length(Data) + 1)), Length(Data) - sentData);
             Inc(attemptsToWrite);
           End;
-        Until ((attemptsToWrite = 3) Or (sentData = Length(Data)));
+        Until ((attemptsToWrite = 3) Or (sentData = Length(Data)) Or Terminated);
       End;
       FTxMsgsOut := iOut; // Write Out after handle the data
     End;
