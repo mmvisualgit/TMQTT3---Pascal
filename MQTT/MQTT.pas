@@ -650,7 +650,7 @@ Function TMQTT.SubscribeMessage: TMQTTMessage;
 Begin
   Result := TMQTTMessage.Create;
   Result.FixedHeader.MessageType := Ord(TMQTTMessageType.SUBSCRIBE);
-  Result.FixedHeader.QoSLevel := 0;
+  Result.FixedHeader.QoSLevel := 1;
   Result.VariableHeader := TMQTTSubscribeVarHeader.Create(0);
   Result.Payload := TMQTTPayload.Create;
 End;
