@@ -110,7 +110,6 @@ Begin
 
   If ((Length(ARlBytes) > 0) And (Length(ARlBytes) <= 4)) Then
   Begin
-    digit := ARlBytes[i];
     Repeat
       digit := ARlBytes[i];
       Result := Result + (digit And 127) * multi;
@@ -222,7 +221,7 @@ Begin
     End;  // end of Recv state case
     // Send Data after receive
     If FPSocket.CanWrite(1) Then
-    While (FTxMsgsIn <> FTxMsgsOut) And Not Terminated Do
+    While (FTxMsgsIn <> FTxMsgsOut) Do
     Begin
       iOut := (FTxMsgsOut + 1) Mod Length(FTxMsgs);
       Data := FTxMsgs[iOut];
@@ -236,7 +235,7 @@ Begin
             sentData := sentData + FPSocket.SendBuffer(Pointer(Copy(Data, sentData - 1, Length(Data) + 1)), Length(Data) - sentData);
             Inc(attemptsToWrite);
           End;
-        Until ((attemptsToWrite = 3) Or (sentData = Length(Data)) Or Terminated);
+        Until ((attemptsToWrite = 3) Or (sentData = Length(Data)));
       End;
       FTxMsgsOut := iOut; // Write Out after handle the data
     End;

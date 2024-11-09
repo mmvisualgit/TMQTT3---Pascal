@@ -317,7 +317,7 @@ Var Msg: TMQTTMessage;
   Data: TBytes;
 Begin
   Result := False;
-  If isConnected Then
+  If FisConnected Then
   Begin
     FKeepAliveTimer.Enabled := False;
     Msg := DisconnectMessage;
