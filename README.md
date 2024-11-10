@@ -16,8 +16,8 @@ This component need's a Broker as server. You can find a lot of YouToube Videos 
 ![The GUI](https://github.com/mmvisualgit/TMQTT3---Pascal/blob/main/MQTT_Demo.png?raw=true)
 
 * First connect to the server
-* "+" can publush a value
-* "+" can add a spbscribe, "-" can unsubscribe
+* "+" can publish a value
+* "+" can add a subscribe, "-" can unsubscribe
 
 ## Points of Note
 
