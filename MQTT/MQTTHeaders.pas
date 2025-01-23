@@ -489,9 +489,9 @@ Procedure TMQTTConnectVarHeader.setupDefaultValues;
 Begin
   Self.FConnectFlags.Flags := 0;
   Self.FConnectFlags.CleanStart := 1;
-  Self.FConnectFlags.WillQoS := 1;
+  Self.FConnectFlags.WillQoS := 0;
   Self.FConnectFlags.WillRetain := 0;
-  Self.FConnectFlags.WillFlag := 1;
+  Self.FConnectFlags.WillFlag := 0;
   Self.FConnectFlags.UserName := 0;
   Self.FConnectFlags.Password := 0;
   Self.FKeepAlive := 10;

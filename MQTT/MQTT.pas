@@ -36,6 +36,11 @@ Type
     FUsername: Utf8string;
     FPassword: Utf8string;
 
+    FCleanStart: Boolean;
+    FWillFlag: Boolean;
+    FWillQoS: Integer;
+    FWillRetain: Boolean;
+
     FSocket: TTCPBlockSocket;
     FKeepAliveTimer: TTimer;
     FKeepAlive: TDateTime;
@@ -87,6 +92,7 @@ Type
     Procedure GotPubComp(Sender: TObject; MessageID: Integer);
 
     Procedure SetTimeout(Value: Integer);
+    Procedure SetWillQoS(Value: Integer);
     Function GetRecvCounter(): int64;
     Function GetSendCounter(): int64;
   public
@@ -112,6 +118,11 @@ Type
 
     Property WillTopic: Utf8string read FWillTopic write FWillTopic;
     Property WillMsg: Utf8string read FWillMsg write FWillMsg;
+
+    Property CleanStart: Boolean read FCleanStart write FCleanStart;
+    Property WillFlag: Boolean read FWillFlag write FWillFlag;
+    Property WillQoS: Integer read FWillQoS write SetWillQoS;
+    Property WillRetain: Boolean read FWillRetain write FWillRetain;
 
     Property Username: Utf8string read FUsername write FUsername;
     Property Password: Utf8string read FPassword write FPassword;
@@ -189,16 +200,27 @@ Begin
       Msg.Payload.Contents.Clear;
       Msg.Payload.Contents.Add(Self.FClientID);
       (Msg.VariableHeader As TMQTTConnectVarHeader).WillFlag := Ord(hasWill);
+
+      (Msg.VariableHeader As TMQTTConnectVarHeader).CleanStart := Ord(FCleanStart);
+      (Msg.VariableHeader As TMQTTConnectVarHeader).WillFlag := Ord(FWillFlag);
+      (Msg.VariableHeader As TMQTTConnectVarHeader).QoSLevel := FWillQoS;
+      (Msg.VariableHeader As TMQTTConnectVarHeader).Retain := Ord(FWillRetain);
+
       If hasWill Then
       Begin
         Msg.Payload.Contents.Add(Self.FWillTopic);
         Msg.Payload.Contents.Add(Self.FWillMsg);
       End;
 
-      If ((Length(FUsername) > 1) And (Length(FPassword) > 1)) Then
+      If Length(FUsername) >= 1 Then
       Begin
         Msg.Payload.Contents.Add(FUsername);
-        Msg.Payload.Contents.Add(FPassword);
+        (Msg.VariableHeader As TMQTTConnectVarHeader).Username := 1;
+        If Length(FPassword) >= 1 Then
+        Begin
+          Msg.Payload.Contents.Add(FPassword);
+          (Msg.VariableHeader As TMQTTConnectVarHeader).Password := 1;
+        End;
       End;
 
       Data := Msg.ToBytes;
@@ -239,6 +261,7 @@ Begin
   Self.FPort := Port;
   Self.FMessageID := 1;
   Self.FTimeout := 1000;
+  Self.FCleanStart := True;
   // Create a Default ClientID as a default. Can be overridden with TMQTT.ClientID any time before connection.
   Self.FClientID := 'TMQTT' + IntToStr(DateTimeToUnix(Time));
 
@@ -356,6 +379,13 @@ Begin
     FRecvThread.Timeout := FTimeout;
   If Assigned(FSocket) Then
     FSocket.SetTimeout(FTimeout);
+End;
+
+Procedure TMQTT.SetWillQoS(Value: Integer);
+Begin
+  If Value < 0 Then Value := 0;
+  If Value > 2 Then Value := 2;
+  FWillQoS := Value;
 End;
 
 Function TMQTT.GetRecvCounter(): int64;
