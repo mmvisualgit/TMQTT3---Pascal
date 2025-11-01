@@ -15,10 +15,6 @@ This component need's a Broker as server. You can find a lot of YouToube Videos 
 
 ![The GUI](https://github.com/mmvisualgit/TMQTT3---Pascal/blob/main/MQTT_Demo.png?raw=true)
 
-* First connect to the server
-* "+" can publish a value
-* "+" can add a subscribe, "-" can unsubscribe
-
 ## Points of Note
 
 * All features from the protocol MQTT V3.1.1 are implemented
@@ -35,3 +31,9 @@ There is a sample Lazarus project to see how the MQTT library can be used.
 
 Special thanks for Jamie who write the initial version.
 If you are using my TMQTT then I would to love hear about how you’re using it, if you do appreciate it, please let me know!
+
+
+## Binaries
+
+The ready translates binaries are for Linux 64 and Windows 64 in the folder "Bin". Start the EXE without installation, this programs are portable versions.
+Linux: download the Linux binary and set the execution flag in the file.
