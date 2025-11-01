@@ -6,7 +6,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  Buttons, MQTT;
+  Buttons, MQTT, IniFiles;
 
 Type
 
@@ -61,6 +61,7 @@ Type
     Procedure spSubscribeClick(Sender: TObject);
     Procedure spUnsubscribeClick(Sender: TObject);
   private
+    ParIni: String;
     Procedure OnConnAck(Sender: TObject; ReturnCode: Integer);
     Procedure OnDisConn(Sender: TObject);
     Procedure OnPingResp(Sender: TObject);
@@ -160,11 +161,40 @@ Begin
 End;
 
 Procedure TfrmMain.FormCreate(Sender: TObject);
+Var ini: TIniFile;
+  i: Integer;
 Begin
   MQTTClient := nil;
   spConnect.Enabled := True;
   spDisconnect.Enabled := False;
   memSub.Lines.Clear;
+  ParIni := ChangeFileExt(Application.ExeName, '.ini');
+  ini := TIniFile.Create(ParIni);
+  Try
+    edClientID.Text := ini.ReadString('Connection', 'ClientID', edClientID.Text);
+    edAddr.Text := ini.ReadString('Connection', 'Host', edAddr.Text);
+    edPort.Text := ini.ReadString('Connection', 'Port', edPort.Text);
+    edUser.Text := ini.ReadString('Connection', 'User', edUser.Text);
+    edPwd.Text := ini.ReadString('Connection', 'Password', edPwd.Text);
+    edPublish.Text := ini.ReadString('Publish', 'Text', edPublish.Text);
+    i := ini.ReadInteger('Publish', 'QoS', 0);
+    Case i Of
+    0: rbPQoS0.Checked := True;
+    1: rbPQoS1.Checked := True;
+    2: rbPQoS2.Checked := True;
+    End;
+    chkRetain.Checked := ini.ReadInteger('Publish', 'Retain', 0) <> 0;
+    chkDup.Checked := ini.ReadInteger('Publish', 'Dup', 0) <> 0;
+    edSubscribe.Text := ini.ReadString('Subscribe', 'Text', edSubscribe.Text);
+    i := ini.ReadInteger('Subscribe', 'QoS', 0);
+    Case i Of
+    0: rbSQoS0.Checked := True;
+    1: rbSQoS1.Checked := True;
+    2: rbSQoS2.Checked := True;
+    End;
+  Finally
+    FreeAndNil(ini);
+  End;
 End;
 
 Procedure TfrmMain.FormShow(Sender: TObject);
@@ -173,8 +203,40 @@ Begin
 end;
 
 Procedure TfrmMain.FormClose(Sender: TObject; Var CloseAction: TCloseAction);
+Var ini: TIniFile;
+  i: Integer;
 Begin
   spDisconnectClick(nil);
+  ini := TIniFile.Create(ParIni);
+  Try
+    ini.WriteString('Connection', 'ClientID', edClientID.Text);
+    ini.WriteString('Connection', 'Host', edAddr.Text);
+    ini.WriteString('Connection', 'Port', edPort.Text);
+    ini.WriteString('Connection', 'User', edUser.Text);
+    ini.WriteString('Connection', 'Password', edPwd.Text);
+    ini.WriteString('Publish', 'Text', edPublish.Text);
+    If rbPQoS1.Checked Then
+      i := 1
+    Else If rbPQoS2.Checked Then
+      i := 2
+    Else i := 0;
+    ini.WriteInteger('Publish', 'QoS', i);
+    If chkRetain.Checked Then
+      ini.WriteInteger('Publish', 'Retain', 1)
+    Else ini.WriteInteger('Publish', 'Retain', 0);
+    If chkDup.Checked Then
+      ini.WriteInteger('Publish', 'Dup', 1)
+    Else ini.WriteInteger('Publish', 'Dup', 0);
+    ini.WriteString('Subscribe', 'Text', edSubscribe.Text);
+    If rbSQoS1.Checked Then
+      i := 1
+    Else If rbSQoS2.Checked Then
+      i := 2
+    Else i := 0;
+    ini.WriteInteger('Subscribe', 'QoS', i);
+  Finally
+    FreeAndNil(ini);
+  End;
 End;
 
 Procedure TfrmMain.OnConnAck(Sender: TObject; ReturnCode: Integer);

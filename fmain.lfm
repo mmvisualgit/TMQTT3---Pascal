@@ -6,11 +6,11 @@ object frmMain: TfrmMain
   Caption = 'MQTT Client'
   ClientHeight = 376
   ClientWidth = 616
+  ShowHint = True
+  LCLVersion = '4.2.0.0'
   OnClose = FormClose
   OnCreate = FormCreate
   OnShow = FormShow
-  ShowHint = True
-  LCLVersion = '3.6.0.0'
   object panConnect: TPanel
     Left = 0
     Height = 99
