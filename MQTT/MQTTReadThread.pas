@@ -182,11 +182,11 @@ Begin
         If FPSocket.LastError <> 0 Then
           FCurrentRecvState := TMQTTRecvState.Error;
 
-        For i := 1 To 4 Do
+        For i := 1 To 3 Do
         Begin
           If ((CurrentMessage.RL[i - 1] And 128) <> 0) Then
           Begin
-            Buffer[0] := FPSocket.PeekByte(FTimeout);
+            Buffer[0] := FPSocket.RecvByte(FTimeout);
             AppendBytes(CurrentMessage.RL, Buffer);
           End Else
             Break;
