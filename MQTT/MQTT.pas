@@ -91,6 +91,18 @@ Type
     Procedure GotPubRel(Sender: TObject; MessageID: Integer);
     Procedure GotPubComp(Sender: TObject; MessageID: Integer);
 
+    Procedure GotConnAckAsyncQueue(Data: PtrInt);
+    Procedure GotDisconnectAsyncQueue(Data: PtrInt);
+    Procedure GotPingRespAsyncQueue(Data: PtrInt);
+    Procedure GotPingReqAsyncQueue(Data: PtrInt);
+    Procedure GotSubAckAsyncQueue(Data: PtrInt);
+    Procedure GotUnSubAckAsyncQueue(Data: PtrInt);
+    Procedure GotPubAsyncQueue(Data: PtrInt);
+    Procedure GotPubAckAsyncQueue(Data: PtrInt);
+    Procedure GotPubRecAsyncQueue(Data: PtrInt);
+    Procedure GotPubRelAsyncQueue(Data: PtrInt);
+    Procedure GotPubCompAsyncQueue(Data: PtrInt);
+
     Procedure SetTimeout(Value: Integer);
     Procedure SetWillQoS(Value: Integer);
     Function GetRecvCounter(): int64;
@@ -151,19 +163,61 @@ Type
 
 Implementation
 
+Type
+  TMqttAsyncMsg = Record
+  public
+    Sender: TObject;
+    MessageID: Integer;
+    QoS: Integer;
+    ReturnCode: Integer;
+    Retain: Boolean;
+    Dup: Boolean;
+    topic: Utf8string;
+    payload: Utf8string;
+  End;
+  PMqttAsyncMsg = ^TMqttAsyncMsg;
+
+
 { TMQTTClient }
 
 Procedure TMQTT.GotConnAck(Sender: TObject; ReturnCode: Integer);
+var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FConnAckEvent) Then
-    OnConnAck(Self, ReturnCode);
+  Begin
+    New(MqttAsyncMsg);
+    MqttAsyncMsg^.Sender := Sender;
+    MqttAsyncMsg^.ReturnCode := ReturnCode;
+    Application.QueueAsyncCall(GotConnAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  End;
+End;
+
+Procedure TMQTT.GotConnAckAsyncQueue(Data: PtrInt);
+Var MqttAsyncMsg: TMqttAsyncMsg;
+Begin
+  MqttAsyncMsg := {%H-}PMqttAsyncMsg(Data)^;
+  Try
+    If Assigned(FConnAckEvent) Then
+      OnConnAck(Self, MqttAsyncMsg.ReturnCode);
+  Finally
+    Dispose({%H-}PMqttAsyncMsg(Data));
+  End;
 End;
 
 Procedure TMQTT.GotDisconnect(Sender: TObject);
 Begin
   FisConnected := False;
   If Assigned(FDisconnectEvent) Then
-    OnDisconnect(Self);
+    Application.QueueAsyncCall(GotDisconnectAsyncQueue, 0);
+End;
+
+Procedure TMQTT.GotDisconnectAsyncQueue(Data: PtrInt);
+Begin
+  Try
+    If Assigned(FDisconnectEvent) Then
+      OnDisconnect(Self);
+  Finally
+  End;
 End;
 
 Function TMQTT.Connect: Boolean;
@@ -453,10 +507,22 @@ Procedure TMQTT.GotPingResp(Sender: TObject);
 Begin
   FKeepAlive := Now;
   If Assigned(FPingRespEvent) Then
+    Application.QueueAsyncCall(GotPingRespAsyncQueue, 0);
+End;
+
+Procedure TMQTT.GotPingRespAsyncQueue(Data: PtrInt);
+Begin
+  If Assigned(FPingRespEvent) Then
     OnPingResp(Self);
 End;
 
 Procedure TMQTT.GotPingReq(Sender: TObject);
+Begin
+  If Assigned(FPingReqEvent) Then
+    Application.QueueAsyncCall(GotPingReqAsyncQueue, 0);
+End;
+
+Procedure TMQTT.GotPingReqAsyncQueue(Data: PtrInt);
 Begin
   If Assigned(FPingReqEvent) Then
     OnPingReq(Self);
@@ -613,19 +679,55 @@ Begin
 End;
 
 Procedure TMQTT.GotPubRec(Sender: TObject; MessageID: Integer);
+Var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
-  If Assigned(FPubRecEvent) Then
-    OnPubRec(Self, MessageID);
+  If Assigned(FPubAckEvent) Then
+  Begin
+    New(MqttAsyncMsg);
+    MqttAsyncMsg^.Sender := Sender;
+    MqttAsyncMsg^.MessageID := MessageID;
+    Application.QueueAsyncCall(GotPubRecAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  End;
+End;
+
+Procedure TMQTT.GotPubRecAsyncQueue(Data: PtrInt);
+Var MqttAsyncMsg: TMqttAsyncMsg;
+Begin
+  MqttAsyncMsg := {%H-}PMqttAsyncMsg(Data)^;
+  Try
+    If Assigned(FPubRecEvent) Then
+      OnPubRec(Self, MqttAsyncMsg.MessageID);
+  Finally
+    Dispose({%H-}PMqttAsyncMsg(Data));
+  End;
 End;
 
 Procedure TMQTT.GotPubRel(Sender: TObject; MessageID: Integer);
+Var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If FAutoResponse Then
   Begin
     Pubcomp(MessageID);
   End;
   If Assigned(FPubRelEvent) Then
-    OnPubRel(Self, MessageID);
+  Begin
+    New(MqttAsyncMsg);
+    MqttAsyncMsg^.Sender := Sender;
+    MqttAsyncMsg^.MessageID := MessageID;
+    Application.QueueAsyncCall(GotPubRelAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  End;
+End;
+
+Procedure TMQTT.GotPubRelAsyncQueue(Data: PtrInt);
+Var MqttAsyncMsg: TMqttAsyncMsg;
+Begin
+  MqttAsyncMsg := {%H-}PMqttAsyncMsg(Data)^;
+  Try
+    If Assigned(FPubRelEvent) Then
+      OnPubRel(Self, MqttAsyncMsg.MessageID);
+  Finally
+    Dispose({%H-}PMqttAsyncMsg(Data));
+  End;
 End;
 
 Function TMQTT.Subscribe(Topic: Utf8string; RequestQoS: Integer): Integer;
@@ -639,9 +741,28 @@ Begin
 End;
 
 Procedure TMQTT.GotSubAck(Sender: TObject; MessageID: Integer; QoS: Integer);
+var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FSubAckEvent) Then
-    OnSubAck(Self, MessageID, QoS);
+  Begin
+    New(MqttAsyncMsg);
+    MqttAsyncMsg^.Sender := Sender;
+    MqttAsyncMsg^.MessageID := MessageID;
+    MqttAsyncMsg^.QoS := QoS;
+    Application.QueueAsyncCall(GotSubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  End;
+End;
+
+Procedure TMQTT.GotSubAckAsyncQueue(Data: PtrInt);
+Var MqttAsyncMsg: TMqttAsyncMsg;
+Begin
+  MqttAsyncMsg := {%H-}PMqttAsyncMsg(Data)^;
+  Try
+    If Assigned(FSubAckEvent) Then
+      OnSubAck(Self, MqttAsyncMsg.MessageID, MqttAsyncMsg.QoS);
+  Finally
+    Dispose({%H-}PMqttAsyncMsg(Data));
+  End;
 End;
 
 Function TMQTT.Subscribe(Topics: TDictionary<Utf8string, Integer>): Integer;
@@ -697,6 +818,7 @@ End;
 
 Procedure TMQTT.GotUnSubAck(Sender: TObject; MessageID: Integer);
 Var i: Integer;
+    MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   i := Subscribed.IndexOfObject(TObject(PtrInt(MessageID)));
   While i >= 0 Do
@@ -705,7 +827,24 @@ Begin
     i := Subscribed.IndexOfObject(TObject(PtrInt(MessageID)));
   End;
   If Assigned(FUnSubAckEvent) Then
-    OnUnSubAck(Self, MessageID);
+  Begin
+    New(MqttAsyncMsg);
+    MqttAsyncMsg^.Sender := Sender;
+    MqttAsyncMsg^.MessageID := MessageID;
+    Application.QueueAsyncCall(GotUnSubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  End;
+End;
+
+Procedure TMQTT.GotUnSubAckAsyncQueue(Data: PtrInt);
+Var MqttAsyncMsg: TMqttAsyncMsg;
+Begin
+  MqttAsyncMsg := {%H-}PMqttAsyncMsg(Data)^;
+  Try
+    If Assigned(FUnSubAckEvent) Then
+      OnUnSubAck(Self, MqttAsyncMsg.MessageID);
+  Finally
+    Dispose({%H-}PMqttAsyncMsg(Data));
+  End;
 End;
 
 Function TMQTT.Unsubscribe(Topics: TStringList): Integer;
@@ -752,8 +891,8 @@ Begin
       OnDisconnect(Self);
 End;
 
-
 Procedure TMQTT.GotPub(Sender: TObject; topic, payload: Utf8string; MessageID: Integer; QoS: Integer; Retain, Dup: Boolean);
+Var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If FAutoResponse Then
   Begin
@@ -764,18 +903,79 @@ Begin
   End;
   If Assigned(FPublishEvent) Then
     OnPublish(Self, topic, payload, MessageID, QoS, Retain, Dup);
+
+  If Assigned(FPublishEvent) Then
+  Begin
+    New(MqttAsyncMsg);
+    MqttAsyncMsg^.Sender := Sender;
+    MqttAsyncMsg^.MessageID := MessageID;
+    MqttAsyncMsg^.QoS := QoS;
+    MqttAsyncMsg^.Retain := Retain;
+    MqttAsyncMsg^.Dup := Dup;
+    MqttAsyncMsg^.topic := topic;
+    MqttAsyncMsg^.payload := payload;
+    Application.QueueAsyncCall(GotPubAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  End;
+End;
+
+Procedure TMQTT.GotPubAsyncQueue(Data: PtrInt);
+Var MqttAsyncMsg: TMqttAsyncMsg;
+Begin
+  MqttAsyncMsg := {%H-}PMqttAsyncMsg(Data)^;
+  Try
+    If Assigned(FPublishEvent) Then
+      OnPublish(Self, MqttAsyncMsg.topic, MqttAsyncMsg.payload, MqttAsyncMsg.MessageID, MqttAsyncMsg.QoS, MqttAsyncMsg.Retain, MqttAsyncMsg.Dup);
+  Finally
+    Dispose({%H-}PMqttAsyncMsg(Data));
+  End;
 End;
 
 Procedure TMQTT.GotPubAck(Sender: TObject; MessageID: Integer);
+Var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FPubAckEvent) Then
-    OnPubAck(Self, MessageID);
+  Begin
+    New(MqttAsyncMsg);
+    MqttAsyncMsg^.Sender := Sender;
+    MqttAsyncMsg^.MessageID := MessageID;
+    Application.QueueAsyncCall(GotPubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  End;
+End;
+
+Procedure TMQTT.GotPubAckAsyncQueue(Data: PtrInt);
+Var MqttAsyncMsg: TMqttAsyncMsg;
+Begin
+  MqttAsyncMsg := {%H-}PMqttAsyncMsg(Data)^;
+  Try
+    If Assigned(FPubAckEvent) Then
+      OnPubAck(Self, MqttAsyncMsg.MessageID);
+  Finally
+    Dispose({%H-}PMqttAsyncMsg(Data));
+  End;
 End;
 
 Procedure TMQTT.GotPubComp(Sender: TObject; MessageID: Integer);
+Var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FPubCompEvent) Then
-    OnPubComp(Self, MessageID);
+  Begin
+    New(MqttAsyncMsg);
+    MqttAsyncMsg^.Sender := Sender;
+    MqttAsyncMsg^.MessageID := MessageID;
+    Application.QueueAsyncCall(GotPubCompAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  End;
+End;
+
+Procedure TMQTT.GotPubCompAsyncQueue(Data: PtrInt);
+Var MqttAsyncMsg: TMqttAsyncMsg;
+Begin
+  MqttAsyncMsg := {%H-}PMqttAsyncMsg(Data)^;
+  Try
+    If Assigned(FPubCompEvent) Then
+      OnPubComp(Self, MqttAsyncMsg.MessageID);
+  Finally
+    Dispose({%H-}PMqttAsyncMsg(Data));
+  End;
 End;
 
 End.
