@@ -42,8 +42,10 @@ Linux: download the Linux binary and set the execution flag in the file.
 
 To activate set this values in the INI file to activate the feature:
 
-```[LastWill]
+```
+[LastWill]
 Topic=TestClient1Exit
 Msg=Gone
 QoS=0
-Retain=0```
+Retain=0
+```
