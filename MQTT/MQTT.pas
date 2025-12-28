@@ -30,6 +30,7 @@ Type
     FTimeout: Integer;
     FTag: PtrInt;
     FRecvThread: TMQTTReadThread;
+    FAsyncQueue: Boolean;
 
     FWillMsg: Utf8string;
     FWillTopic: Utf8string;
@@ -37,7 +38,6 @@ Type
     FPassword: Utf8string;
 
     FCleanStart: Boolean;
-    FWillFlag: Boolean;
     FWillQoS: Integer;
     FWillRetain: Boolean;
 
@@ -105,6 +105,9 @@ Type
 
     Procedure SetTimeout(Value: Integer);
     Procedure SetWillQoS(Value: Integer);
+    Procedure SetWillRetain(Value: Boolean);
+    Procedure SetWillTopic(Value: Utf8string);
+    Procedure SetWillMsg(Value: Utf8string);
     Function GetRecvCounter(): int64;
     Function GetSendCounter(): int64;
   public
@@ -125,16 +128,18 @@ Type
     Function Unsubscribe(Topic: Utf8string): Integer; overload;
     Function Unsubscribe(Topics: TStringList): Integer; overload;
     Function PingReq: Boolean;
-    Constructor Create(hostName: String; port: Integer);
+    Constructor Create(Hostname: String; Port: Integer);
     Destructor Destroy; override;
 
-    Property WillTopic: Utf8string read FWillTopic write FWillTopic;
-    Property WillMsg: Utf8string read FWillMsg write FWillMsg;
+    Property AsyncQueue: Boolean read FAsyncQueue write FAsyncQueue;
+
+    Property WillTopic: Utf8string read FWillTopic write SetWillTopic;
+    Property WillMsg: Utf8string read FWillMsg write SetWillMsg;
 
     Property CleanStart: Boolean read FCleanStart write FCleanStart;
-    Property WillFlag: Boolean read FWillFlag write FWillFlag;
+    Property WillFlag: Boolean read hasWill;
     Property WillQoS: Integer read FWillQoS write SetWillQoS;
-    Property WillRetain: Boolean read FWillRetain write FWillRetain;
+    Property WillRetain: Boolean read FWillRetain write SetWillRetain;
 
     Property Username: Utf8string read FUsername write FUsername;
     Property Password: Utf8string read FPassword write FPassword;
@@ -185,10 +190,15 @@ var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FConnAckEvent) Then
   Begin
-    New(MqttAsyncMsg);
-    MqttAsyncMsg^.Sender := Sender;
-    MqttAsyncMsg^.ReturnCode := ReturnCode;
-    Application.QueueAsyncCall(GotConnAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    If FAsyncQueue Then
+    Begin
+      New(MqttAsyncMsg);
+      MqttAsyncMsg^.Sender := Sender;
+      MqttAsyncMsg^.ReturnCode := ReturnCode;
+      Application.QueueAsyncCall(GotConnAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    End Else Begin
+      OnConnAck(Self, ReturnCode);
+    End;
   End;
 End;
 
@@ -208,7 +218,11 @@ Procedure TMQTT.GotDisconnect(Sender: TObject);
 Begin
   FisConnected := False;
   If Assigned(FDisconnectEvent) Then
-    Application.QueueAsyncCall(GotDisconnectAsyncQueue, 0);
+  Begin
+    If FAsyncQueue Then
+      Application.QueueAsyncCall(GotDisconnectAsyncQueue, 0)
+    Else OnDisconnect(Self);
+  End;
 End;
 
 Procedure TMQTT.GotDisconnectAsyncQueue(Data: PtrInt);
@@ -232,13 +246,13 @@ Begin
     FSocket.ConnectionTimeout := FTimeout;
     FSocket.nonBlockMode := True;
     FSocket.NonblockSendTimeout := 1;
-    FSocket.Connect(Self.FHostname, IntToStr(Self.FPort));
+    FSocket.Connect(FHostname, IntToStr(FPort));
     FisConnected := FSocket.LastError = 0;
     If FSocket.LastError <> 0 Then
       FreeAndNil(FSocket);
   Except
     // If we encounter an exception upon connection then reraise it, free the socket
-    // and reset our isConnected flag.
+    // and reset our FisConnected flag.
     on E: Exception Do
     Begin
       Raise;
@@ -252,18 +266,24 @@ Begin
     Msg := ConnectMessage;
     Try
       Msg.Payload.Contents.Clear;
-      Msg.Payload.Contents.Add(Self.FClientID);
-      (Msg.VariableHeader As TMQTTConnectVarHeader).WillFlag := Ord(hasWill);
+      Msg.Payload.Contents.Add(FClientID);
 
       (Msg.VariableHeader As TMQTTConnectVarHeader).CleanStart := Ord(FCleanStart);
-      (Msg.VariableHeader As TMQTTConnectVarHeader).WillFlag := Ord(FWillFlag);
-      (Msg.VariableHeader As TMQTTConnectVarHeader).QoSLevel := FWillQoS;
-      (Msg.VariableHeader As TMQTTConnectVarHeader).Retain := Ord(FWillRetain);
-
       If hasWill Then
       Begin
-        Msg.Payload.Contents.Add(Self.FWillTopic);
-        Msg.Payload.Contents.Add(Self.FWillMsg);
+        (Msg.VariableHeader As TMQTTConnectVarHeader).WillFlag := 1;
+        (Msg.VariableHeader As TMQTTConnectVarHeader).QoSLevel := FWillQoS;
+        (Msg.VariableHeader As TMQTTConnectVarHeader).Retain := Ord(FWillRetain);
+        Msg.Payload.Contents.Add(FWillTopic);
+        Msg.Payload.Contents.Add(FWillMsg);
+      End Else Begin
+        (Msg.VariableHeader As TMQTTConnectVarHeader).WillFlag := 0;
+        (Msg.VariableHeader As TMQTTConnectVarHeader).QoSLevel := 0;
+        (Msg.VariableHeader As TMQTTConnectVarHeader).Retain := 0;
+        FWillQoS := 0;
+        FWillRetain := False;
+        FWillTopic := '';
+        FWillMsg := '';
       End;
 
       If Length(FUsername) >= 1 Then
@@ -305,19 +325,24 @@ Begin
   Result.FixedHeader.Duplicate := 0;
 End;
 
-Constructor TMQTT.Create(hostName: String; port: Integer);
+Constructor TMQTT.Create(Hostname: String; Port: Integer);
 Begin
   Inherited Create;
 
-  Self.FisConnected := False;
-  Self.FAutoResponse := True;
-  Self.FHostname := Hostname;
-  Self.FPort := Port;
-  Self.FMessageID := 1;
-  Self.FTimeout := 1000;
-  Self.FCleanStart := True;
+  FAsyncQueue := False;
+  FisConnected := False;
+  FAutoResponse := True;
+  FHostname := Hostname;
+  FPort := Port;
+  FMessageID := 1;
+  FTimeout := 1000;
+  FCleanStart := True;
+  FWillMsg := '';
+  FWillTopic := '';
+  FWillRetain := False;
+  FWillQoS := 0;
   // Create a Default ClientID as a default. Can be overridden with TMQTT.ClientID any time before connection.
-  Self.FClientID := 'TMQTT' + IntToStr(DateTimeToUnix(Time));
+  FClientID := 'TMQTT' + IntToStr(DateTimeToUnix(Time));
 
   Subscribed := TStringList.Create;
 
@@ -349,18 +374,18 @@ Begin
     FRecvThread := TMQTTReadThread.Create(Socket);
     FRecvThread.Timeout := FTimeout;
 
-    { Todo: Assign Event Handlers here.   }
-    FRecvThread.OnConnAck := Self.GotConnAck;
-    FRecvThread.OnDisconnect := Self.GotDisconnect;
-    FRecvThread.OnPublish := Self.GotPub;
-    FRecvThread.OnPingResp := Self.GotPingResp;
-    FRecvThread.OnPingReq := Self.GotPingReq;
-    FRecvThread.OnSubAck := Self.GotSubAck;
-    FRecvThread.OnUnSubAck := Self.GotUnSubAck;
-    FRecvThread.OnPubAck := Self.GotPubAck;
-    FRecvThread.OnPubRec := Self.GotPubRec;
-    FRecvThread.OnPubRel := Self.GotPubRel;
-    FRecvThread.OnPubComp := Self.GotPubComp;
+    { Todo: Assign Event Handlers here. }
+    FRecvThread.OnConnAck := GotConnAck;
+    FRecvThread.OnDisconnect := GotDisconnect;
+    FRecvThread.OnPublish := GotPub;
+    FRecvThread.OnPingResp := GotPingResp;
+    FRecvThread.OnPingReq := GotPingReq;
+    FRecvThread.OnSubAck := GotSubAck;
+    FRecvThread.OnUnSubAck := GotUnSubAck;
+    FRecvThread.OnPubAck := GotPubAck;
+    FRecvThread.OnPubRec := GotPubRec;
+    FRecvThread.OnPubRel := GotPubRel;
+    FRecvThread.OnPubComp := GotPubComp;
     Result := True;
   Except
     Result := False;
@@ -437,9 +462,31 @@ End;
 
 Procedure TMQTT.SetWillQoS(Value: Integer);
 Begin
-  If Value < 0 Then Value := 0;
-  If Value > 2 Then Value := 2;
-  FWillQoS := Value;
+  If Not FisConnected Then
+  Begin
+    If Value < 0 Then Value := 0;
+    If Value > 2 Then Value := 2;
+    FWillQoS := Value;
+  End;
+End;
+
+Procedure TMQTT.SetWillRetain(Value: Boolean);
+Begin
+  If Not FisConnected Then
+    FWillRetain := Value;
+End;
+
+
+Procedure TMQTT.SetWillTopic(Value: Utf8string); 
+Begin
+  If Not FisConnected Then
+    FWillTopic := Value;
+End;
+
+Procedure TMQTT.SetWillMsg(Value: Utf8string);
+Begin
+  If Not FisConnected Then
+    FWillMsg := Value;
 End;
 
 Function TMQTT.GetRecvCounter(): int64;
@@ -466,16 +513,12 @@ End;
 
 Function TMQTT.hasWill: Boolean;
 Begin
-  If ((Length(FWillTopic) < 1) And (Length(FWillMsg) < 1)) Then
-  Begin
-    Result := False;
-  End Else
-    Result := True;
+  Result := (FWillTopic <> '') And (FWillMsg <> '');
 End;
 
 Procedure TMQTT.KeepAliveTimer_Event(Sender: TObject);
 Begin
-  If Self.isConnected Then
+  If FisConnected Then
   Begin                 // 4 times of missing ping request
     If FKeepAlive < (Now - ((FKeepAliveTimer.Interval * 4) / 86400000)) Then
       Disconnect // Timeout after 30 seconds, do disconnect
@@ -488,7 +531,7 @@ Var Msg: TMQTTMessage;
   Data: TBytes;
 Begin
   Result := False;
-  If isConnected Then
+  If FisConnected Then
   Begin
     Msg := PingReqMessage;
     Data := Msg.ToBytes;
@@ -507,7 +550,11 @@ Procedure TMQTT.GotPingResp(Sender: TObject);
 Begin
   FKeepAlive := Now;
   If Assigned(FPingRespEvent) Then
-    Application.QueueAsyncCall(GotPingRespAsyncQueue, 0);
+  Begin
+    If FAsyncQueue Then
+      Application.QueueAsyncCall(GotPingRespAsyncQueue, 0)
+    Else OnPingResp(Self);
+  End;
 End;
 
 Procedure TMQTT.GotPingRespAsyncQueue(Data: PtrInt);
@@ -519,7 +566,11 @@ End;
 Procedure TMQTT.GotPingReq(Sender: TObject);
 Begin
   If Assigned(FPingReqEvent) Then
-    Application.QueueAsyncCall(GotPingReqAsyncQueue, 0);
+  Begin
+    If FAsyncQueue Then
+      Application.QueueAsyncCall(GotPingReqAsyncQueue, 0)
+    Else OnPingReq(Self);
+  End;
 End;
 
 Procedure TMQTT.GotPingReqAsyncQueue(Data: PtrInt);
@@ -552,7 +603,7 @@ Begin
   Result := -1;
   If ((QoS >= 0) And (QoS <= 2)) Then
   Begin
-    If isConnected Then
+    If FisConnected Then
     Begin
       Msg := PublishMessage;
       Msg.FixedHeader.Retain := IIF(Retain);
@@ -591,7 +642,7 @@ Var Msg: TMQTTMessage;
   Data: TBytes;
 Begin
   Result := -1;
-  If isConnected Then
+  If FisConnected Then
   Begin
     Msg := PubrelMessage;
     (Msg.VariableHeader As TMQTTPubrelVarHeader).MessageID := MessageID;
@@ -614,7 +665,7 @@ Var Msg: TMQTTMessage;
   Data: TBytes;
 Begin
   Result := -1;
-  If isConnected Then
+  If FisConnected Then
   Begin
     Msg := PubackMessage;
     (Msg.VariableHeader As TMQTTPubackVarHeader).MessageID := MessageID;
@@ -637,7 +688,7 @@ Var Msg: TMQTTMessage;
   Data: TBytes;
 Begin
   Result := -1;
-  If isConnected Then
+  If FisConnected Then
   Begin
     Msg := PubrecMessage;
     (Msg.VariableHeader As TMQTTPubrecVarHeader).MessageID := MessageID;
@@ -660,7 +711,7 @@ Var Msg: TMQTTMessage;
   Data: TBytes;
 Begin
   Result := -1;
-  If isConnected Then
+  If FisConnected Then
   Begin
     Msg := PubcompMessage;
     (Msg.VariableHeader As TMQTTPubcompVarHeader).MessageID := MessageID;
@@ -683,10 +734,15 @@ Var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FPubAckEvent) Then
   Begin
-    New(MqttAsyncMsg);
-    MqttAsyncMsg^.Sender := Sender;
-    MqttAsyncMsg^.MessageID := MessageID;
-    Application.QueueAsyncCall(GotPubRecAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    If FAsyncQueue Then
+    Begin
+      New(MqttAsyncMsg);
+      MqttAsyncMsg^.Sender := Sender;
+      MqttAsyncMsg^.MessageID := MessageID;
+      Application.QueueAsyncCall(GotPubRecAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    End Else Begin
+      OnPubRec(Self, MessageID);
+    End;
   End;
 End;
 
@@ -711,10 +767,15 @@ Begin
   End;
   If Assigned(FPubRelEvent) Then
   Begin
-    New(MqttAsyncMsg);
-    MqttAsyncMsg^.Sender := Sender;
-    MqttAsyncMsg^.MessageID := MessageID;
-    Application.QueueAsyncCall(GotPubRelAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    If FAsyncQueue Then
+    Begin
+      New(MqttAsyncMsg);
+      MqttAsyncMsg^.Sender := Sender;
+      MqttAsyncMsg^.MessageID := MessageID;
+      Application.QueueAsyncCall(GotPubRelAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    End Else Begin
+      OnPubRel(Self, MessageID);
+    End;
   End;
 End;
 
@@ -744,12 +805,17 @@ Procedure TMQTT.GotSubAck(Sender: TObject; MessageID: Integer; QoS: Integer);
 var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FSubAckEvent) Then
-  Begin
-    New(MqttAsyncMsg);
-    MqttAsyncMsg^.Sender := Sender;
-    MqttAsyncMsg^.MessageID := MessageID;
-    MqttAsyncMsg^.QoS := QoS;
-    Application.QueueAsyncCall(GotSubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  Begin 
+    If FAsyncQueue Then
+    Begin
+      New(MqttAsyncMsg);
+      MqttAsyncMsg^.Sender := Sender;
+      MqttAsyncMsg^.MessageID := MessageID;
+      MqttAsyncMsg^.QoS := QoS;
+      Application.QueueAsyncCall(GotSubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    End Else Begin
+      OnSubAck(Self, MessageID, QoS);
+    End;
   End;
 End;
 
@@ -772,7 +838,7 @@ Var Msg: TMQTTMessage;
   Data: TBytes;
 Begin
   Result := -1;
-  If isConnected Then
+  If FisConnected Then
   Begin
     Msg := SubscribeMessage;
     MsgId := getNextMessageId;
@@ -828,10 +894,15 @@ Begin
   End;
   If Assigned(FUnSubAckEvent) Then
   Begin
-    New(MqttAsyncMsg);
-    MqttAsyncMsg^.Sender := Sender;
-    MqttAsyncMsg^.MessageID := MessageID;
-    Application.QueueAsyncCall(GotUnSubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    If FAsyncQueue Then
+    Begin
+      New(MqttAsyncMsg);
+      MqttAsyncMsg^.Sender := Sender;
+      MqttAsyncMsg^.MessageID := MessageID;
+      Application.QueueAsyncCall(GotUnSubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    End Else Begin
+      OnUnSubAck(Self, MessageID);
+    End;
   End;
 End;
 
@@ -853,7 +924,7 @@ Var Msg: TMQTTMessage;
   Data: TBytes;
 Begin
   Result := -1;
-  If isConnected Then
+  If FisConnected Then
   Begin
     Msg := UnsubscribeMessage;
     MsgId := getNextMessageId;
@@ -905,16 +976,21 @@ Begin
     OnPublish(Self, topic, payload, MessageID, QoS, Retain, Dup);
 
   If Assigned(FPublishEvent) Then
-  Begin
-    New(MqttAsyncMsg);
-    MqttAsyncMsg^.Sender := Sender;
-    MqttAsyncMsg^.MessageID := MessageID;
-    MqttAsyncMsg^.QoS := QoS;
-    MqttAsyncMsg^.Retain := Retain;
-    MqttAsyncMsg^.Dup := Dup;
-    MqttAsyncMsg^.topic := topic;
-    MqttAsyncMsg^.payload := payload;
-    Application.QueueAsyncCall(GotPubAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  Begin    
+    If FAsyncQueue Then
+    Begin
+      New(MqttAsyncMsg);
+      MqttAsyncMsg^.Sender := Sender;
+      MqttAsyncMsg^.MessageID := MessageID;
+      MqttAsyncMsg^.QoS := QoS;
+      MqttAsyncMsg^.Retain := Retain;
+      MqttAsyncMsg^.Dup := Dup;
+      MqttAsyncMsg^.topic := topic;
+      MqttAsyncMsg^.payload := payload;
+      Application.QueueAsyncCall(GotPubAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    End Else Begin
+      OnPublish(Self, topic, payload, MessageID, QoS, Retain, Dup);
+    End;
   End;
 End;
 
@@ -935,10 +1011,15 @@ Var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FPubAckEvent) Then
   Begin
-    New(MqttAsyncMsg);
-    MqttAsyncMsg^.Sender := Sender;
-    MqttAsyncMsg^.MessageID := MessageID;
-    Application.QueueAsyncCall(GotPubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    If FAsyncQueue Then
+    Begin
+      New(MqttAsyncMsg);
+      MqttAsyncMsg^.Sender := Sender;
+      MqttAsyncMsg^.MessageID := MessageID;
+      Application.QueueAsyncCall(GotPubAckAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    End Else Begin
+      OnPubAck(Self, MessageID);
+    End;
   End;
 End;
 
@@ -958,11 +1039,16 @@ Procedure TMQTT.GotPubComp(Sender: TObject; MessageID: Integer);
 Var MqttAsyncMsg: PMqttAsyncMsg;
 Begin
   If Assigned(FPubCompEvent) Then
-  Begin
-    New(MqttAsyncMsg);
-    MqttAsyncMsg^.Sender := Sender;
-    MqttAsyncMsg^.MessageID := MessageID;
-    Application.QueueAsyncCall(GotPubCompAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+  Begin 
+    If FAsyncQueue Then
+    Begin
+      New(MqttAsyncMsg);
+      MqttAsyncMsg^.Sender := Sender;
+      MqttAsyncMsg^.MessageID := MessageID;
+      Application.QueueAsyncCall(GotPubCompAsyncQueue, {%H-}PtrInt(MqttAsyncMsg));
+    End Else Begin
+      OnPubComp(Self, MessageID);
+    End;
   End;
 End;
 
