@@ -37,3 +37,13 @@ If you are using my TMQTT then I would to love hear about how you’re using it,
 
 The ready translates binaries are for Linux 64 and Windows 64 in the folder "Bin". Start the EXE without installation, this programs are portable versions.
 Linux: download the Linux binary and set the execution flag in the file.
+
+## Last Will message
+
+To activate set this values in the INI file to activate the feature:
+
+```[LastWill]
+Topic=TestClient1Exit
+Msg=Gone
+QoS=0
+Retain=0```

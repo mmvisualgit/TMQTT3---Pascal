@@ -13,6 +13,7 @@ Type
   { TfrmMain }
 
   TfrmMain = Class(TForm)
+    btnHalt: TButton;
     chkRetain: TCheckBox;
     chkLogPing: TCheckBox;
     chkDup: TCheckBox;
@@ -52,6 +53,7 @@ Type
     spPublish: TSpeedButton;
     spUnsubscribe: TSpeedButton;
     Splitter1: TSplitter;
+    Procedure btnHaltClick(Sender: TObject);
     Procedure FormClose(Sender: TObject; Var CloseAction: TCloseAction);
     Procedure FormCreate(Sender: TObject);
     Procedure FormShow(Sender: TObject);
@@ -62,6 +64,10 @@ Type
     Procedure spUnsubscribeClick(Sender: TObject);
   private
     ParIni: String;
+    ParWillTopic: String;
+    ParWillMsg: String;
+    ParWillQoS: Integer;
+    ParWillRetain: Boolean;
     Procedure OnConnAck(Sender: TObject; ReturnCode: Integer);
     Procedure OnDisConn(Sender: TObject);
     Procedure OnPingResp(Sender: TObject);
@@ -93,6 +99,7 @@ Begin
     If Not Assigned(MQTTClient) Then
     Begin
       MQTTClient := TMQTT.Create(edAddr.Text, StrToIntDef(edPort.Text, 1883));
+      MQTTClient.AsyncQueue := True;
       MQTTClient.ClientID := edClientID.Text;
       MQTTClient.Username := edUser.Text;
       MQTTClient.Password := edPwd.Text;
@@ -107,11 +114,18 @@ Begin
       MQTTClient.OnPubRec := @OnPubRec;
       MQTTClient.OnPubRel := @OnPubRel;
       MQTTClient.OnPubComp := @OnPubComp;
+      MQTTClient.WillTopic := ParWillTopic;
+      MQTTClient.WillMsg := ParWillMsg;
+      MQTTClient.WillQoS := ParWillQoS;
+      MQTTClient.WillRetain := ParWillRetain;
     End;
     If Not MQTTClient.Connect() Then
     Begin
       FreeAndNil(MQTTClient);
       memSub.Lines.Add('Connection failed.');
+    End Else Begin
+      If (ParWillTopic <> '') And (ParWillMsg <> '') Then
+        memSub.Lines.Add('LastWill: ' + ParWillTopic + '=' + ParWillMsg);
     End;
   Finally
     Screen.Cursor := crDefault;
@@ -192,6 +206,21 @@ Begin
     1: rbSQoS1.Checked := True;
     2: rbSQoS2.Checked := True;
     End;
+    If Not ini.SectionExists('LastWill') Then
+    Begin
+      ini.WriteString('LastWill', 'Topic', '');
+      ini.WriteString('LastWill', 'Msg', '');
+      ini.WriteInteger('LastWill', 'Flag', 0);
+      ini.WriteInteger('LastWill', 'QoS', 0);
+      ini.WriteInteger('LastWill', 'Retain', 0);
+    End Else Begin
+      ParWillTopic := ini.ReadString('LastWill', 'Topic', '');
+      ParWillMsg := ini.ReadString('LastWill', 'Msg', '');
+      ParWillQoS := ini.ReadInteger('LastWill', 'QoS', 0);
+      If (ParWillQoS < 0) Or (ParWillQoS > 2) Then
+        ParWillQoS := 0;
+      ParWillRetain := ini.ReadInteger('LastWill', 'Retain', 0) <> 0;
+    End;
   Finally
     FreeAndNil(ini);
   End;
@@ -238,6 +267,11 @@ Begin
     FreeAndNil(ini);
   End;
 End;
+
+Procedure TfrmMain.btnHaltClick(Sender: TObject);
+Begin
+  Halt;
+end;
 
 Procedure TfrmMain.OnConnAck(Sender: TObject; ReturnCode: Integer);
 Begin

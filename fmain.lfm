@@ -7,7 +7,7 @@ object frmMain: TfrmMain
   ClientHeight = 376
   ClientWidth = 616
   ShowHint = True
-  LCLVersion = '4.2.0.0'
+  LCLVersion = '4.4.0.0'
   OnClose = FormClose
   OnCreate = FormCreate
   OnShow = FormShow
@@ -225,6 +225,18 @@ object frmMain: TfrmMain
       Width = 6
       BorderSpacing.Left = 8
       Caption = '0'
+    end
+    object btnHalt: TButton
+      AnchorSideLeft.Control = chkLogPing
+      AnchorSideLeft.Side = asrBottom
+      Left = 487
+      Height = 22
+      Top = 3
+      Width = 51
+      BorderSpacing.Left = 16
+      Caption = 'Halt'
+      TabOrder = 6
+      OnClick = btnHaltClick
     end
   end
   object Panel1: TPanel
